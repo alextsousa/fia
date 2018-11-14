@@ -11,10 +11,14 @@ import matplotlib.pyplot as plt
 import re
 from datetime import datetime
 from keras.utils import plot_model
+import os.path
 
 #!!# Categoriza as saídas
 from keras.utils.np_utils import to_categorical
 #!!#
+
+# import para validação cruzada
+from sklearn.model_selection import cross_val_predict
 
 # Just disables the warning, doesn't enable AVX/FMA
 # import os
@@ -90,7 +94,7 @@ def process_dataset(strDtAtual):
 
         # Coluna 00 matricula
         # Nova coluna 0
-        # new_fields.append(fields[0])
+        new_fields.append(fields[0])
         
         # Coluna 01 adicionada ao final
         
@@ -139,10 +143,10 @@ def process_dataset(strDtAtual):
 
         # Coluna 24 v ou f transformado para 1 ou 0
         # # Nova coluna 19            
-        # if fields[24].upper() == 'V':
-            # new_fields.append(1)
-        # else:
-            # new_fields.append(0)
+        if fields[24].upper() == 'V':
+            new_fields.append(1)
+        else:
+            new_fields.append(0)
 
         # Coluna 25 retirada
 
@@ -221,12 +225,20 @@ def split_dataset(strDtAtual):
 # Train net
 #  
 def train_net(strDtAtual):
+    # verifica se o diretório de resultados existe
+    if not(os.path.exists("./resultados") ):
+        os.mkdir("./resultados")
+
+    # verifica se o diretório de modelo existe
+    if not (os.path.exists("./modelo")):
+        os.mkdir("./modelo")
+
     # Fixa o gerador de números aleatórios
     seed = 7
     np.random.seed(seed)
 
     # Número de padrões usados para treinamento
-    n_patterns = 1000
+    n_patterns = 100
 
     fid = open('./dataset/train.csv', 'r')
     lines = fid.readlines()
@@ -247,8 +259,8 @@ def train_net(strDtAtual):
     dataset = np.array(dataset)
 
     # Divide o dataset em entradas (X) e saídas (Y)
-    X = dataset[0:n_patterns, 0:18]
-    Y = dataset[0:n_patterns, 18]
+    X = dataset[0:n_patterns, 0:20]
+    Y = dataset[0:n_patterns, 20]
 
     #!!# Normaliza o dataset
     X = X / np.amax(X, axis=0)
@@ -260,10 +272,15 @@ def train_net(strDtAtual):
 
     # Cria o modelo
     model = Sequential()
-    model.add(Dense(1000, input_dim=18, kernel_initializer="uniform", activation='sigmoid'))
-    model.add(Dropout(0.2))
-    model.add(Dense(1000, kernel_initializer="uniform", activation='sigmoid'))
-    model.add(Dropout(0.2))
+    model.add(Dense(250, input_dim=20, kernel_initializer="uniform", activation='sigmoid'))
+    #model.add(Dropout(0.2))
+
+    model.add(Dense(250, kernel_initializer="uniform", activation='sigmoid'))
+    #model.add(Dropout(0.2))
+
+    model.add(Dense(250, kernel_initializer="uniform", activation='sigmoid'))
+    #model.add(Dropout(0.2))
+    model.add(Dense(250, kernel_initializer="uniform", activation='sigmoid'))
 
     #!!# Saída pode ter 2 valores diferentes 0 ou 1
     # model.add(Dense(1, kernel_initializer="uniform", activation='softmax'))
@@ -274,23 +291,32 @@ def train_net(strDtAtual):
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     # Treina o modelo
-    history = model.fit(X, Y, epochs=15, batch_size=10)
+    history = model.fit(X, Y, epochs=200, batch_size=32)
 
     # Exporta o modelo
-    model.save('./resultados/model.h5')
+    model.save('./modelo/model.h5')
 
     print(history.history.keys())
     print(history.history['acc'])
 
+    # Avalia o modelo
+    scores = model.evaluate(X, Y)
+
+    acc = "\n%s: %.2f%%" % (model.metrics_names[1], scores[1] * 100)
+
+    plt.title(acc)
     plt.plot(history.history['acc'])
     plt.plot(history.history['loss'])
     plt.savefig("./resultados/" + strDtAtual + "treinamento.png")
     plt.show()
+    print(acc)
 
-    # Avalia o modelo
-    scores = model.evaluate(X, Y)
-    print("\n%s: %.2f%%" % (model.metrics_names[1], scores[1] * 100))
+    # validação cruzada
+    # resultados = cross_val_predict(model, X, Y, cv=5)
 
+    # metrics.accuracy_score(y, resultados)
+
+    # print(resultados)
 
 #
 # Teste da rede com padrões desconhecidos
@@ -318,8 +344,8 @@ def test_net(strDtAtual):
     n_test_patterns = 1000
 
     # Divide o dataset em entradas (X) e saídas (Y)
-    X = dataset[0:n_test_patterns, 0:18]
-    Y = dataset[0:n_test_patterns, 18]
+    X = dataset[0:n_test_patterns, 0:20]
+    Y = dataset[0:n_test_patterns, 20]
 
     # !!# Normaliza o dataset
     X = X / np.amax(X, axis=0)
@@ -329,7 +355,7 @@ def test_net(strDtAtual):
     Y = to_categorical(Y, 2)
     # !!#
 
-    model = load_model('./resultados/model.h5')
+    model = load_model('./modelo/model.h5')
 
     pred = model.predict(x=X, batch_size=1, verbose=0)
 
