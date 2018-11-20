@@ -12,6 +12,7 @@ import re
 from datetime import datetime
 from keras.utils import plot_model
 import os.path
+import time
 
 #!!# Categoriza as saídas
 from keras.utils.np_utils import to_categorical
@@ -50,9 +51,10 @@ def getDateTime():
 # Processa o dataset (substitui campos 'string' por inteiros)
 #
 def process_dataset(strDtAtual):
+    print('Processing...')
+
     # Carrega o dataset original
     fid = open('./dataset/DadosAlunos.csv', 'r')
-    
 
     print('Reading file...')
     lines = fid.readlines()
@@ -81,17 +83,11 @@ def process_dataset(strDtAtual):
 
     new_lines = []
 
-    print( 'Processing...')
-    
-
     for line in lines:
 
         fields = line.split(';')
-
         # Ajusta os valor das colunas
-
         new_fields = []
-
         # Coluna 00 matricula
         # Nova coluna 0
         new_fields.append(fields[0])
@@ -122,9 +118,6 @@ def process_dataset(strDtAtual):
             if cidade_pesquisa.find(remover_acentos(ibge_Line[3].upper())) != -1:
                 codIbge = ibge_Line[2]
                 break
-
-            #if remover_acentos(ibge_Line[3].upper()) == remover_acentos(fields[6].upper()):
-                
         new_fields.append(codIbge)
 
         # Coluna 07 retirada
@@ -158,18 +151,6 @@ def process_dataset(strDtAtual):
             if strOutItem == fields[22]:
                 found = 1
         new_fields.append(found)
-
-        # Adiciona no final a coluna nome
-        # Nova coluna 21
-        #new_fields.append(fields[1])
-
-        # Adiciona no final a coluna email
-        # Nova coluna 22
-        #new_fields.append(fields[5])
-
-        # Adiciona no final a coluna município
-        # Nova coluna 23
-        #new_fields.append(fields[6])
 
         # Corrige informações vazias
         new_array = []
@@ -238,7 +219,7 @@ def train_net(strDtAtual):
     np.random.seed(seed)
 
     # Número de padrões usados para treinamento
-    n_patterns = 100
+    n_patterns = 1000
 
     fid = open('./dataset/train.csv', 'r')
     lines = fid.readlines()
@@ -251,10 +232,8 @@ def train_net(strDtAtual):
         new_line = new_line.replace(',','.')
         new_line = new_line.split(';')
 
-        #!!# Converte o dataset para float
-        # dataset.append(list( new_line ))
+        # Converte o dataset para float
         dataset.append(list(map(float, new_line )))
-        #!!#
 
     dataset = np.array(dataset)
 
@@ -262,41 +241,31 @@ def train_net(strDtAtual):
     X = dataset[0:n_patterns, 0:20]
     Y = dataset[0:n_patterns, 20]
 
-    #!!# Normaliza o dataset
+    # Normaliza o dataset
     X = X / np.amax(X, axis=0)
-    #!!#
 
-    #!!# Categoriza as saídas
+    # Categoriza as saídas
     Y = to_categorical(Y, 2)
-    #!!#
 
     # Cria o modelo
     model = Sequential()
-    model.add(Dense(250, input_dim=20, kernel_initializer="uniform", activation='sigmoid'))
-    #model.add(Dropout(0.2))
 
-    model.add(Dense(250, kernel_initializer="uniform", activation='sigmoid'))
-    #model.add(Dropout(0.2))
-
-    model.add(Dense(250, kernel_initializer="uniform", activation='sigmoid'))
-    #model.add(Dropout(0.2))
-    model.add(Dense(250, kernel_initializer="uniform", activation='sigmoid'))
-
-    #!!# Saída pode ter 2 valores diferentes 0 ou 1
-    # model.add(Dense(1, kernel_initializer="uniform", activation='softmax'))
+    model.add(Dense(160, input_dim=20, kernel_initializer="uniform", activation='sigmoid'))
+    model.add(Dense(160, kernel_initializer="uniform", activation='sigmoid'))
+    model.add(Dense(160, kernel_initializer="uniform", activation='sigmoid'))
+    model.add(Dense(160, kernel_initializer="uniform", activation='sigmoid'))
     model.add(Dense(2, kernel_initializer="uniform", activation='softmax'))
-    #!!#
 
     # Compila o modelo
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     # Treina o modelo
-    history = model.fit(X, Y, epochs=200, batch_size=32)
+    history = model.fit(X, Y, epochs=200, batch_size=10)
 
     # Exporta o modelo
     model.save('./modelo/model.h5')
 
-    print(history.history.keys())
+    # print(history.history.keys())
     print(history.history['acc'])
 
     # Avalia o modelo
@@ -308,15 +277,16 @@ def train_net(strDtAtual):
     plt.plot(history.history['acc'])
     plt.plot(history.history['loss'])
     plt.savefig("./resultados/" + strDtAtual + "treinamento.png")
-    plt.show()
+    # plt.show()
     print(acc)
 
     # validação cruzada
-    # resultados = cross_val_predict(model, X, Y, cv=5)
+    # from sklearn.cross_validation import StratifiedKFold
 
-    # metrics.accuracy_score(y, resultados)
-
-    # print(resultados)
+    # Valida o modelo com Cross Validation
+    #kfold = StratifiedKFold(y=Y, n_folds=10, shuffle=True, random_state=seed)
+    #results = cross_val_score(model, X, Y, cv=kfold)
+    #print(results.mean())
 
 #
 # Teste da rede com padrões desconhecidos
@@ -396,7 +366,9 @@ if __name__ == "__main__":
         elif option == '2':
             split_dataset(strDtAtual)
         elif option == '3':
+            t0 = time.clock()
             train_net(strDtAtual)
+            print("tempo de convergencia: %.2f" % round(time.clock() - t0, 2) + "s")
         elif option == '4':
             test_net(strDtAtual)
         elif option == '9':
