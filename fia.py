@@ -219,7 +219,7 @@ def train_net(strDtAtual):
     np.random.seed(seed)
 
     # Número de padrões usados para treinamento
-    n_patterns = 1000
+    n_patterns = 10000
 
     fid = open('./dataset/train.csv', 'r')
     lines = fid.readlines()
@@ -280,18 +280,11 @@ def train_net(strDtAtual):
     # plt.show()
     print(acc)
 
-    # validação cruzada
-    # from sklearn.cross_validation import StratifiedKFold
-
-    # Valida o modelo com Cross Validation
-    #kfold = StratifiedKFold(y=Y, n_folds=10, shuffle=True, random_state=seed)
-    #results = cross_val_score(model, X, Y, cv=kfold)
-    #print(results.mean())
-
 #
 # Teste da rede com padrões desconhecidos
 #  
 def test_net(strDtAtual):
+    n_test_patterns = 10000
 
     print("Testing...")
     fid = open('./dataset/test.csv', 'r')
@@ -310,8 +303,6 @@ def test_net(strDtAtual):
         dataset.append(list(map(float, new_line )))
         #!!#
     dataset = np.array(dataset)
-
-    n_test_patterns = 1000
 
     # Divide o dataset em entradas (X) e saídas (Y)
     X = dataset[0:n_test_patterns, 0:20]
@@ -343,7 +334,8 @@ def test_net(strDtAtual):
     acc = float(n_correct) / (n_correct + n_wrong) * 100
 
     print("Acc: " + str(acc)  + "%")
-
+    print("Corretos: " + str(n_correct))
+    print("Erros: " + str(n_wrong ))
 
 if __name__ == "__main__":
 
@@ -370,7 +362,9 @@ if __name__ == "__main__":
             train_net(strDtAtual)
             print("tempo de convergencia: %.2f" % round(time.clock() - t0, 2) + "s")
         elif option == '4':
+            t0 = time.clock()
             test_net(strDtAtual)
+            print("tempo de teste: %.2f" % round(time.clock() - t0, 2) + "s")
         elif option == '9':
             exit = True
         else:
